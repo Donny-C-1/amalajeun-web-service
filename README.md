@@ -229,14 +229,8 @@ The application automatically runs migrations on startup. Models are defined usi
 4. Use a process manager like systemd or Docker
 5. Set up proper logging and monitoring
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
-
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under a [Proprietary License](LICENSE.md).
+
+> **Note:** AmalaJeun is a proprietary application. Usage and distribution are subject to the terms specified in the license.
