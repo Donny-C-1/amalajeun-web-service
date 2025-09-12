@@ -1,6 +1,6 @@
-# Amala Jeun Backend API
+# AmalaJeun Backend API
 
-A Go-based backend API for Amala Jeun - a Yelp-like platform for discovering Amala spots in Lagos, Nigeria. The API includes AI agent capabilities for adding, verifying, and discovering spots.
+A Go-based backend API for Amala Jeun—a platform for discovering Amala spots in Lagos, Nigeria. The API includes AI agent capabilities for adding, verifying, and discovering spots.
 
 ## Features
 
