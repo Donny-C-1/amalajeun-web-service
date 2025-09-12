@@ -8,6 +8,9 @@ import (
 
 // SetupRoutes configures all API routes
 func SetupRoutes(router *gin.Engine) {
+	// Home route
+	router.GET("/", handlers.HomeHandler)
+
 	// API version 1 group
 	v1 := router.Group("/api/v1")
 	{
