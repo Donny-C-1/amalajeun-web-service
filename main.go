@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/donny-c-1/amalajeun/auth"
 	"github.com/donny-c-1/amalajeun/database"
 	"github.com/donny-c-1/amalajeun/routes"
 	"github.com/gin-gonic/gin"
@@ -32,6 +33,15 @@ func main() {
 		log.Fatalf("Failed to run database migrations: %v", err)
 	}
 
+	// Initialize authentication system
+	if err := auth.InitOAuthConfig(); err != nil {
+		log.Fatalf("Failed to initialize OAuth configuration: %v", err)
+	}
+
+	if err := auth.InitJWT(); err != nil {
+		log.Fatalf("Failed to initialize JWT: %v", err)
+	}
+
 	// Initialize Gin router
 	router := gin.Default()
 
@@ -39,19 +49,8 @@ func main() {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
-	// Add CORS middleware for development
-	router.Use(func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	})
+	// Add CORS middleware for frontend
+	router.Use(auth.CORSMiddleware())
 
 	// Setup routes
 	routes.SetupRoutes(router)

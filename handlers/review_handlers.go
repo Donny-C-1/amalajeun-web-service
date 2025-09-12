@@ -3,7 +3,9 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/donny-c-1/amalajeun/auth"
 	"github.com/donny-c-1/amalajeun/database"
 	"github.com/donny-c-1/amalajeun/models"
 	"github.com/gin-gonic/gin"
@@ -11,6 +13,15 @@ import (
 
 // CreateReview handles POST /reviews - add a review for a spot
 func CreateReview(c *gin.Context) {
+	// Get authenticated user
+	user, exists := auth.GetUserFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication required to create reviews",
+		})
+		return
+	}
+
 	var review models.Review
 
 	// Bind JSON request to review struct
@@ -39,6 +50,12 @@ func CreateReview(c *gin.Context) {
 		return
 	}
 
+	// Set user ID and keep backward compatibility with UserName
+	review.UserID = &user.ID
+	review.UserName = user.Name // Keep for backward compatibility
+	review.CreatedAt = time.Now()
+	review.UpdatedAt = time.Now()
+
 	// Create review in database
 	if err := database.DB.Create(&review).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -48,8 +65,8 @@ func CreateReview(c *gin.Context) {
 		return
 	}
 
-	// Load the spot information for the response
-	database.DB.Preload("Spot").First(&review, review.ID)
+	// Load the spot and user information for the response
+	database.DB.Preload("Spot").Preload("User").First(&review, review.ID)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Review created successfully",

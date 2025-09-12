@@ -3,7 +3,9 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/donny-c-1/amalajeun/auth"
 	"github.com/donny-c-1/amalajeun/database"
 	"github.com/donny-c-1/amalajeun/models"
 	"github.com/gin-gonic/gin"
@@ -11,6 +13,15 @@ import (
 
 // CreateSpot handles POST /spots - add a new Amala spot
 func CreateSpot(c *gin.Context) {
+	// Get authenticated user
+	user, exists := auth.GetUserFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication required to create spots",
+		})
+		return
+	}
+
 	var spot models.Spot
 
 	// Bind JSON request to spot struct
@@ -30,6 +41,12 @@ func CreateSpot(c *gin.Context) {
 		return
 	}
 
+	// Set user ID and keep backward compatibility with AddedBy
+	spot.UserID = &user.ID
+	spot.AddedBy = user.Name // Keep for backward compatibility
+	spot.CreatedAt = time.Now()
+	spot.UpdatedAt = time.Now()
+
 	// Create spot in database
 	if err := database.DB.Create(&spot).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -38,6 +55,9 @@ func CreateSpot(c *gin.Context) {
 		})
 		return
 	}
+
+	// Load user information for response
+	database.DB.Preload("User").First(&spot, spot.ID)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Spot created successfully",
@@ -149,6 +169,15 @@ func GetSpot(c *gin.Context) {
 
 // VerifySpot handles PATCH /spots/:id/verify - mark a spot as verified
 func VerifySpot(c *gin.Context) {
+	// Get authenticated user
+	user, exists := auth.GetUserFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication required to verify spots",
+		})
+		return
+	}
+
 	id := c.Param("id")
 
 	// Convert id to uint
@@ -170,8 +199,13 @@ func VerifySpot(c *gin.Context) {
 		return
 	}
 
-	// Update verified status
-	if err := database.DB.Model(&spot).Update("verified", true).Error; err != nil {
+	// Update verified status and updated timestamp
+	updates := map[string]interface{}{
+		"verified":   true,
+		"updated_at": time.Now(),
+	}
+
+	if err := database.DB.Model(&spot).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to verify spot",
 			"details": err.Error(),
@@ -180,10 +214,15 @@ func VerifySpot(c *gin.Context) {
 	}
 
 	// Reload the spot to get updated data
-	database.DB.First(&spot, uint(spotID))
+	database.DB.Preload("User").First(&spot, uint(spotID))
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Spot verified successfully",
 		"data":    spot,
+		"verified_by": gin.H{
+			"id":    user.ID,
+			"name":  user.Name,
+			"email": user.Email,
+		},
 	})
 }

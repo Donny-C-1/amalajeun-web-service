@@ -68,6 +68,7 @@ func Migrate() error {
 	}
 
 	err := DB.AutoMigrate(
+		&models.User{}, // Add User model first for foreign key relationships
 		&models.Spot{},
 		&models.Review{},
 	)

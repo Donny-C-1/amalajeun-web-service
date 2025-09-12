@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/donny-c-1/amalajeun/auth"
 	"github.com/donny-c-1/amalajeun/handlers"
 	"github.com/gin-gonic/gin"
 )
@@ -11,28 +12,39 @@ func SetupRoutes(router *gin.Engine) {
 	v1 := router.Group("/api/v1")
 	{
 		// Health check endpoint
-		v1.GET("/health", func(c *gin.Context) {
-			c.JSON(200, gin.H{
-				"status":  "ok",
-				"message": "Amala Jeun API is running",
-				"version": "1.0.0",
-			})
-		})
+		v1.GET("/health", handlers.AuthHealth) // Updated to show auth status
 
-		// Spot routes
-		spots := v1.Group("/spots")
+		// Authentication routes
+		authGroup := v1.Group("/auth")
 		{
-			spots.POST("", handlers.CreateSpot)             // POST /api/v1/spots
-			spots.GET("", handlers.GetSpots)                // GET /api/v1/spots
-			spots.GET("/:id", handlers.GetSpot)             // GET /api/v1/spots/:id
-			spots.PATCH("/:id/verify", handlers.VerifySpot) // PATCH /api/v1/spots/:id/verify
+			authGroup.GET("/google", handlers.GoogleLogin)                        // GET /api/v1/auth/google
+			authGroup.GET("/google/callback", handlers.GoogleCallback)            // GET /api/v1/auth/google/callback
+			authGroup.GET("/profile", auth.AuthMiddleware(), handlers.GetProfile) // GET /api/v1/auth/profile (protected)
+			authGroup.POST("/logout", handlers.Logout)                            // POST /api/v1/auth/logout
 		}
 
-		// Review routes
+		// Public routes (no authentication required)
+		spots := v1.Group("/spots")
+		{
+			spots.GET("", handlers.GetSpots)    // GET /api/v1/spots
+			spots.GET("/:id", handlers.GetSpot) // GET /api/v1/spots/:id
+		}
+
 		reviews := v1.Group("/reviews")
 		{
-			reviews.POST("", handlers.CreateReview)            // POST /api/v1/reviews
 			reviews.GET("/:spotId", handlers.GetReviewsBySpot) // GET /api/v1/reviews/:spotId
+		}
+
+		// Protected routes (authentication required)
+		protected := v1.Group("")
+		protected.Use(auth.AuthMiddleware())
+		{
+			// Protected spot routes
+			protected.POST("/spots", handlers.CreateSpot)             // POST /api/v1/spots
+			protected.PATCH("/spots/:id/verify", handlers.VerifySpot) // PATCH /api/v1/spots/:id/verify
+
+			// Protected review routes
+			protected.POST("/reviews", handlers.CreateReview) // POST /api/v1/reviews
 		}
 	}
 
