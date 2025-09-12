@@ -1,4 +1,4 @@
-Copyright (c) 2025 AmalaJeun. All rights reserved.
+Copyright (c) 2025 AmalaJẹun. All rights reserved.
 
 This project and its source code are proprietary software.
 

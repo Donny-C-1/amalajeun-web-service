@@ -1,6 +1,6 @@
-# AmalaJeun Backend API
+# AmalaJẹun Backend API
 
-A Go-based backend API for Amala Jeun—a platform for discovering Amala spots in Lagos, Nigeria. The API includes AI agent capabilities for adding, verifying, and discovering spots.
+A Go-based backend API for AmalaJẹun — a platform for discovering Amala spots in Lagos, Nigeria. The API includes AI agent capabilities for adding, verifying, and discovering spots.
 
 ## Features
 
@@ -22,7 +22,7 @@ A Go-based backend API for Amala Jeun—a platform for discovering Amala spots i
 ## Project Structure
 
 ```
-AmalaJeun/
+AmalaJẹun/
 ├── main.go                 # Application entry point
 ├── go.mod                  # Go module dependencies
 ├── models/                 # Data models
@@ -41,7 +41,7 @@ AmalaJeun/
 
 ### Prerequisites
 - PostgreSQL installed and running
-- Database created (default: `amalajeun`)
+- Database created (default: `amalajẹun`)
 
 ### Environment Variables
 Set the following environment variables (optional, defaults provided):
@@ -61,7 +61,7 @@ GIN_MODE=debug
 
 1. **Clone and navigate to the project**:
    ```bash
-   cd AmalaJeun
+   cd AmalaJẹun
    ```
 
 2. **Install dependencies**:
@@ -76,8 +76,8 @@ GIN_MODE=debug
 
    Or build and run:
    ```bash
-   go build -o amalajeun.exe .
-   ./amalajeun.exe
+   go build -o amalajẹun.exe .
+   ./amalajẹun.exe
    ```
 
 4. **Verify the server is running**:
@@ -233,4 +233,4 @@ The application automatically runs migrations on startup. Models are defined usi
 
 This project is licensed under a [Proprietary License](LICENSE.md).
 
-> **Note:** AmalaJeun is a proprietary application. Usage and distribution are subject to the terms specified in the license.
+> **Note:** AmalaJẹun is a proprietary application. Usage and distribution are subject to the terms specified in the license.
