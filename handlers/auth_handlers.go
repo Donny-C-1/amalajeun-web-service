@@ -160,7 +160,7 @@ func GoogleCallback(c *gin.Context) {
 		jwtToken,
 		86400, // 1day
 		"/",
-		"https://amalajeun.vercel.app",
+		"amalajeun.vercel.app",
 		true,
 		false,
 	)
