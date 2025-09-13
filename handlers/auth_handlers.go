@@ -155,17 +155,16 @@ func GoogleCallback(c *gin.Context) {
 		return
 	}
 
-	// Return success response with token and user info
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Authentication successful",
-		"token":   jwtToken,
-		"user": gin.H{
-			"id":         user.ID,
-			"email":      user.Email,
-			"name":       user.Name,
-			"avatar_url": user.AvatarURL,
-		},
-	})
+	c.SetCookie(
+		"amalajeun_token",
+		jwtToken,
+		86400, // 1day
+		"/",
+		"https://amalajeun.vercel.app",
+		true,
+		false,
+	)
+	c.Redirect(http.StatusFound, "https://amalajeun.vercel.app/map")
 }
 
 // GetProfile returns the current user's profile information
