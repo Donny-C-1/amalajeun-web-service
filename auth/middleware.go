@@ -168,6 +168,7 @@ func CORSMiddleware() gin.HandlerFunc {
 			"http://localhost:3001",
 			"http://127.0.0.1:3000",
 			"http://127.0.0.1:3001",
+			"https://amalajeun.vercel.app",
 		}
 
 		// Check if origin is allowed
