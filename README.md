@@ -231,6 +231,6 @@ The application automatically runs migrations on startup. Models are defined usi
 
 ## License
 
-This project is licensed under a [Proprietary License](LICENSE.md).
+This project is licensed under a [Proprietary License](?tab=License-1-ov-file).
 
 > **Note:** AmalaJẹun is a proprietary application. Usage and distribution are subject to the terms specified in the license.
