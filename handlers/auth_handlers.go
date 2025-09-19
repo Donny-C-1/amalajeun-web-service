@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/donny-c-1/amalajeun/auth"
@@ -155,16 +157,10 @@ func GoogleCallback(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie(
-		"amalajeun_token",
-		jwtToken,
-		86400, // 1day
-		"/",
-		"amalajeun.vercel.app",
-		true,
-		false,
-	)
-	c.Redirect(http.StatusFound, "https://amalajeun.vercel.app/map")
+	frontEndURL := os.Getenv("FRONTEND_URL")
+	redirectURL := fmt.Sprintf("%s/map?amalajeun_token=%s", frontEndURL, jwtToken)
+
+	c.Redirect(http.StatusFound, redirectURL)
 }
 
 // GetProfile returns the current user's profile information
