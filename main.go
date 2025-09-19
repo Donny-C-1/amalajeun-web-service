@@ -4,12 +4,17 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"syscall"
+
+	"os/signal"
 
 	"github.com/donny-c-1/amalajeun/auth"
 	"github.com/donny-c-1/amalajeun/database"
 	"github.com/donny-c-1/amalajeun/routes"
+	"github.com/donny-c-1/amalajeun/services/places"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
@@ -61,6 +66,38 @@ func main() {
 		log.Fatalln("PORT must be set in env")
 	}
 
+	// Start the Cron Job for places discovery
+	cronjob := cron.New()
+
+	// Run immediately on startup and then daily
+	placesService := places.NewPlacesService()
+
+	// Run immediately on startup
+	log.Println("Running initial places discovery on startup...")
+	if err := placesService.RunPlacesDiscovery(); err != nil {
+		log.Printf("Initial places discovery failed: %v", err)
+	} else {
+		log.Println("Initial places discovery completed successfully")
+	}
+
+	// Schedule daily runs
+	_, err := cronjob.AddFunc("@daily", func() {
+		log.Println("Starting scheduled daily places discovery...")
+		if err := placesService.RunPlacesDiscovery(); err != nil {
+			log.Printf("Daily places discovery failed: %v", err)
+		} else {
+			log.Println("Daily places discovery completed successfully")
+		}
+	})
+	if err != nil {
+		log.Fatalln("Error scheduling discovery job:", err)
+	}
+
+	cronjob.Start()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
 	// Start server
 	log.Printf("Starting Amala Jeun API server on port %s", port)
 	log.Printf("Health check available at: http://localhost:%s/api/v1/health", port)
@@ -72,7 +109,18 @@ func main() {
 	log.Printf("  POST   /reviews               - Create a review")
 	log.Printf("  GET    /reviews/:spotId       - Get reviews for a spot")
 
-	if err := router.Run(":" + port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+	// Run Gin in a subroutine
+	go func() {
+		if err := router.Run(":" + port); err != nil {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Block until signal received
+	<-quit
+
+	fmt.Println("Stopping Cron Job")
+	ctx := cronjob.Stop()
+	<-ctx.Done()
+	fmt.Println("Cron Job Stopped")
 }
