@@ -269,18 +269,16 @@ func UploadSpotImage(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Initialize Cloudinary service
-	cloudinaryService, err := cloudinary.NewCloudinaryService()
-	if err != nil {
+	// Check if Cloudinary service is initialized
+	if cloudinary.GlobalCloudinaryService == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to initialize image upload service",
-			"details": err.Error(),
+			"error": "Image upload service not initialized",
 		})
 		return
 	}
 
-	// Upload image to Cloudinary
-	imageURL, err := cloudinaryService.UploadImage(c.Request.Context(), file, header, uint(spotID))
+	// Upload image to Cloudinary using the global service instance
+	imageURL, err := cloudinary.GlobalCloudinaryService.UploadImage(c.Request.Context(), file, header, uint(spotID))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Failed to upload image",

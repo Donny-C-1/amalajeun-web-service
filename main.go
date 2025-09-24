@@ -11,6 +11,7 @@ import (
 	"github.com/donny-c-1/amalajeun/auth"
 	"github.com/donny-c-1/amalajeun/database"
 	"github.com/donny-c-1/amalajeun/routes"
+	"github.com/donny-c-1/amalajeun/services/cloudinary"
 	"github.com/donny-c-1/amalajeun/services/places"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -45,6 +46,11 @@ func main() {
 
 	if err := auth.InitJWT(); err != nil {
 		log.Fatalf("Failed to initialize JWT: %v", err)
+	}
+
+	// Initialize Cloudinary service - done once at startup for efficiency
+	if err := cloudinary.InitCloudinaryService(); err != nil {
+		log.Fatalf("Failed to initialize Cloudinary service: %v", err)
 	}
 
 	// Initialize Gin router

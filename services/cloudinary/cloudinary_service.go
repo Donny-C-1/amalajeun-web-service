@@ -18,7 +18,34 @@ type CloudinaryService struct {
 	client *cloudinary.Cloudinary
 }
 
+// Global Cloudinary service instance - initialized once at startup
+var GlobalCloudinaryService *CloudinaryService
+
+// InitCloudinaryService initializes the global Cloudinary service instance
+// This should be called once during application startup
+func InitCloudinaryService() error {
+	// Get Cloudinary URL from environment variable
+	cloudinaryURL := os.Getenv("CLOUDINARY_URL")
+	if cloudinaryURL == "" {
+		return fmt.Errorf("CLOUDINARY_URL environment variable is required")
+	}
+
+	// Initialize Cloudinary client
+	cld, err := cloudinary.NewFromURL(cloudinaryURL)
+	if err != nil {
+		return fmt.Errorf("failed to initialize Cloudinary client: %w", err)
+	}
+
+	// Set the global instance
+	GlobalCloudinaryService = &CloudinaryService{
+		client: cld,
+	}
+
+	return nil
+}
+
 // NewCloudinaryService creates a new Cloudinary service instance
+// Deprecated: Use InitCloudinaryService() and GlobalCloudinaryService instead
 func NewCloudinaryService() (*CloudinaryService, error) {
 	// Get Cloudinary URL from environment variable
 	cloudinaryURL := os.Getenv("CLOUDINARY_URL")
