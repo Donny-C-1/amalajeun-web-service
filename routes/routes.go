@@ -43,8 +43,9 @@ func SetupRoutes(router *gin.Engine) {
 		protected.Use(auth.AuthMiddleware())
 		{
 			// Protected spot routes
-			protected.POST("/spots", handlers.CreateSpot)             // POST /api/v1/spots
-			protected.PATCH("/spots/:id/verify", handlers.VerifySpot) // PATCH /api/v1/spots/:id/verify
+			protected.POST("/spots", handlers.CreateSpot)                 // POST /api/v1/spots
+			protected.PATCH("/spots/:id/verify", handlers.VerifySpot)     // PATCH /api/v1/spots/:id/verify
+			protected.POST("/spots/:id/images", handlers.UploadSpotImage) // POST /api/v1/spots/:id/images
 
 			// Protected review routes
 			protected.POST("/reviews", handlers.CreateReview) // POST /api/v1/reviews

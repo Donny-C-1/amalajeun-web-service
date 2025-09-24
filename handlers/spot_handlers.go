@@ -8,6 +8,7 @@ import (
 	"github.com/donny-c-1/amalajeun/auth"
 	"github.com/donny-c-1/amalajeun/database"
 	"github.com/donny-c-1/amalajeun/models"
+	"github.com/donny-c-1/amalajeun/services/cloudinary"
 	"github.com/gin-gonic/gin"
 )
 
@@ -220,6 +221,94 @@ func VerifySpot(c *gin.Context) {
 		"message": "Spot verified successfully",
 		"data":    spot,
 		"verified_by": gin.H{
+			"id":    user.ID,
+			"name":  user.Name,
+			"email": user.Email,
+		},
+	})
+}
+
+// UploadSpotImage handles POST /spots/:id/images - upload an image for a specific spot
+func UploadSpotImage(c *gin.Context) {
+	// Get authenticated user
+	user, exists := auth.GetUserFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authentication required to upload images",
+		})
+		return
+	}
+
+	// Get spot ID from URL parameter
+	id := c.Param("id")
+	spotID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid spot ID",
+		})
+		return
+	}
+
+	// Check if spot exists
+	var spot models.Spot
+	if err := database.DB.First(&spot, uint(spotID)).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Spot not found",
+		})
+		return
+	}
+
+	// Get the uploaded file
+	file, header, err := c.Request.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "No image file provided",
+			"details": "Please provide an image file with the key 'image'",
+		})
+		return
+	}
+	defer file.Close()
+
+	// Initialize Cloudinary service
+	cloudinaryService, err := cloudinary.NewCloudinaryService()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to initialize image upload service",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Upload image to Cloudinary
+	imageURL, err := cloudinaryService.UploadImage(c.Request.Context(), file, header, uint(spotID))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Failed to upload image",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Add the new image URL to the spot's images array
+	spot.Images = append(spot.Images, imageURL)
+	spot.UpdatedAt = time.Now()
+
+	// Update the spot in the database
+	if err := database.DB.Save(&spot).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to save image URL to database",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Return success response
+	c.JSON(http.StatusCreated, gin.H{
+		"message":      "Image uploaded successfully",
+		"image_url":    imageURL,
+		"spot_id":      spotID,
+		"total_images": len(spot.Images),
+		"uploaded_by": gin.H{
 			"id":    user.ID,
 			"name":  user.Name,
 			"email": user.Email,

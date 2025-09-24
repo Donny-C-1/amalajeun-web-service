@@ -1,11 +1,40 @@
 package models
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+// StringArray represents a JSON array of strings for database storage
+type StringArray []string
+
+// Scan implements the Scanner interface for database deserialization
+func (sa *StringArray) Scan(value interface{}) error {
+	if value == nil {
+		*sa = StringArray{}
+		return nil
+	}
+
+	bytes, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(bytes, sa)
+}
+
+// Value implements the driver Valuer interface for database serialization
+func (sa StringArray) Value() (driver.Value, error) {
+	if len(sa) == 0 {
+		return "[]", nil
+	}
+	return json.Marshal(sa)
+}
 
 // Source represents the source of a spot entry
 type Source string
@@ -42,6 +71,7 @@ type Spot struct {
 	Source      Source         `json:"source" gorm:"type:varchar(20);not null" binding:"required"`
 	Status      Status         `json:"status" gorm:"type:varchar(20);default:'pending_verification'"`
 	PlaceID     string         `json:"place_id" gorm:"type:varchar(255);uniqueIndex"`
+	Images      StringArray    `json:"images" gorm:"type:jsonb;default:'[]'"` // Array of Cloudinary URLs
 	LastSeen    *time.Time     `json:"last_seen"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`

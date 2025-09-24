@@ -106,6 +106,7 @@ func main() {
 	log.Printf("  GET    /spots                 - List all spots")
 	log.Printf("  GET    /spots/:id             - Get a specific spot")
 	log.Printf("  PATCH  /spots/:id/verify      - Verify a spot")
+	log.Printf("  POST   /spots/:id/images      - Upload image for a spot")
 	log.Printf("  POST   /reviews               - Create a review")
 	log.Printf("  GET    /reviews/:spotId       - Get reviews for a spot")
 
