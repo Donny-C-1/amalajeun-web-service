@@ -10,6 +10,7 @@ import (
 	"github.com/donny-c-1/amalajeun/models"
 	"github.com/donny-c-1/amalajeun/services/cloudinary"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // CreateSpot handles POST /spots - add a new Amala spot
@@ -290,6 +291,9 @@ func UploadSpotImage(c *gin.Context) {
 	// Add the new image URL to the spot's images array
 	spot.Images = append(spot.Images, imageURL)
 	spot.UpdatedAt = time.Now()
+	if spot.PlaceID == ""{
+		spot.PlaceID = uuid.New().String() // Ensure PlaceID is set
+	}
 
 	// Update the spot in the database
 	if err := database.DB.Save(&spot).Error; err != nil {
