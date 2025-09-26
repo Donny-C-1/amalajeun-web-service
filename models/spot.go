@@ -55,6 +55,8 @@ const (
 )
 
 // Spot represents an Amala spot in Lagos
+// Note: The Verified bool field has been removed in favor of the Status field
+// which provides more granular control over verification states
 type Spot struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
 	Name        string         `json:"name" gorm:"not null" binding:"required"`
@@ -67,7 +69,6 @@ type Spot struct {
 	DineIn      bool           `json:"dine_in" gorm:"default:false"`
 	OpeningTime string         `json:"opening_time"`
 	ClosingTime string         `json:"closing_time"`
-	Verified    bool           `json:"verified" gorm:"default:false"`
 	Source      Source         `json:"source" gorm:"type:varchar(20);not null" binding:"required"`
 	Status      Status         `json:"status" gorm:"type:varchar(20);default:'pending_verification'"`
 	PlaceID     string         `json:"place_id" gorm:"type:varchar(255);uniqueIndex"`

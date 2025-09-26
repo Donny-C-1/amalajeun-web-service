@@ -71,6 +71,7 @@ func Migrate() error {
 		&models.User{}, // Add User model first for foreign key relationships
 		&models.Spot{},
 		&models.Review{},
+		&models.SpotVerification{}, // New: Track spot verifications for the 3-user verification workflow
 	)
 
 	if err != nil {

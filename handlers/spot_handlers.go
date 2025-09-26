@@ -122,10 +122,11 @@ func GetSpots(c *gin.Context) {
 
 	// Apply filters
 	if verified != "" {
-		if verified == "true" {
-			query = query.Where("verified = ?", true)
-		} else if verified == "false" {
-			query = query.Where("verified = ?", false)
+		switch verified {
+		case "true":
+			query = query.Where("status = ?", models.StatusVerified)
+		case "false":
+			query = query.Where("status != ?", models.StatusVerified)
 		}
 	}
 
@@ -146,10 +147,11 @@ func GetSpots(c *gin.Context) {
 	var total int64
 	countQuery := database.DB.Model(&models.Spot{})
 	if verified != "" {
-		if verified == "true" {
-			countQuery = countQuery.Where("verified = ?", true)
-		} else if verified == "false" {
-			countQuery = countQuery.Where("verified = ?", false)
+		switch verified {
+		case "true":
+			countQuery = countQuery.Where("status = ?", models.StatusVerified)
+		case "false":
+			countQuery = countQuery.Where("status != ?", models.StatusVerified)
 		}
 	}
 	if source != "" {
@@ -195,7 +197,9 @@ func GetSpot(c *gin.Context) {
 	})
 }
 
-// VerifySpot handles PATCH /spots/:id/verify - mark a spot as verified
+// VerifySpot handles PATCH /spots/:id/verify - verify a spot
+// New workflow: Requires 3 unique user verifications to mark spot as verified
+// Each user can only verify a spot once (enforced by unique constraint)
 func VerifySpot(c *gin.Context) {
 	// Get authenticated user
 	user, exists := auth.GetUserFromContext(c)
@@ -227,31 +231,74 @@ func VerifySpot(c *gin.Context) {
 		return
 	}
 
-	// Update verified status and updated timestamp
-	updates := map[string]interface{}{
-		"verified":   true,
-		"updated_at": time.Now(),
+	// Check if user has already verified this spot
+	var existingVerification models.SpotVerification
+	result := database.DB.Where("spot_id = ? AND user_id = ?", spotID, user.ID).First(&existingVerification)
+
+	if result.Error == nil {
+		// Verification already exists for this user and spot
+		c.JSON(http.StatusConflict, gin.H{
+			"error":   "You have already verified this spot",
+			"message": "Each user can only verify a spot once",
+		})
+		return
 	}
 
-	if err := database.DB.Model(&spot).Updates(updates).Error; err != nil {
+	// Create new verification record
+	verification := models.SpotVerification{
+		SpotID: uint(spotID),
+		UserID: user.ID,
+	}
+
+	if err := database.DB.Create(&verification).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to verify spot",
+			"error":   "Failed to record verification",
 			"details": err.Error(),
 		})
 		return
+	}
+
+	// Count total verifications for this spot
+	var verificationCount int64
+	if err := database.DB.Model(&models.SpotVerification{}).
+		Where("spot_id = ?", spotID).
+		Count(&verificationCount).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to count verifications",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Update spot status if we reach 3 verifications
+	if verificationCount >= 3 {
+		updates := map[string]interface{}{
+			"status":     models.StatusVerified,
+			"updated_at": time.Now(),
+		}
+
+		if err := database.DB.Model(&spot).Updates(updates).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to update spot status",
+				"details": err.Error(),
+			})
+			return
+		}
 	}
 
 	// Reload the spot to get updated data
 	database.DB.Preload("User").First(&spot, uint(spotID))
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Spot verified successfully",
-		"data":    spot,
+		"message":            "Verification recorded successfully",
+		"data":               spot,
+		"verification_count": verificationCount,
 		"verified_by": gin.H{
 			"id":    user.ID,
 			"name":  user.Name,
 			"email": user.Email,
 		},
+		"spot_status": spot.Status,
 	})
 }
 
