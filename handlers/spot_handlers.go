@@ -3,16 +3,19 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/donny-c-1/amalajeun/auth"
 	"github.com/donny-c-1/amalajeun/database"
 	"github.com/donny-c-1/amalajeun/models"
 	"github.com/donny-c-1/amalajeun/services/cloudinary"
+	"github.com/donny-c-1/amalajeun/services/places"
 	"github.com/gin-gonic/gin"
 )
 
 // CreateSpot handles POST /spots - add a new Amala spot
+// Now includes comprehensive duplicate prevention logic
 func CreateSpot(c *gin.Context) {
 	// Get authenticated user
 	user, exists := auth.GetUserFromContext(c)
@@ -48,8 +51,21 @@ func CreateSpot(c *gin.Context) {
 	spot.CreatedAt = time.Now()
 	spot.UpdatedAt = time.Now()
 
-	// Create spot in database
-	if err := database.DB.Create(&spot).Error; err != nil {
+	// Use the repository with duplicate checking instead of direct database creation
+	spotRepo := places.NewSpotRepository()
+	createdSpot, err := spotRepo.CreateSpotWithDuplicateCheck(&spot)
+	if err != nil {
+		// Check if this is a duplicate error
+		if isDuplicateError(err) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":   "Duplicate spot detected",
+				"message": "A similar spot already exists in this location",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		// Other database errors
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to create spot",
 			"details": err.Error(),
@@ -58,12 +74,23 @@ func CreateSpot(c *gin.Context) {
 	}
 
 	// Load user information for response
-	database.DB.Preload("User").First(&spot, spot.ID)
+	database.DB.Preload("User").First(createdSpot, createdSpot.ID)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Spot created successfully",
-		"data":    spot,
+		"data":    createdSpot,
 	})
+}
+
+// isDuplicateError checks if an error is related to duplicate detection
+func isDuplicateError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errMsg := strings.ToLower(err.Error())
+	return strings.Contains(errMsg, "duplicate spot detected") ||
+		strings.Contains(errMsg, "similar spot exists") ||
+		strings.Contains(errMsg, "matches existing spot")
 }
 
 // GetSpots handles GET /spots - list all spots

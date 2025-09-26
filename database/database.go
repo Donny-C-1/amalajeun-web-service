@@ -78,6 +78,79 @@ func Migrate() error {
 	}
 
 	log.Println("Database migrations completed successfully")
+
+	// Apply performance indexes for duplicate prevention
+	if err := ApplyDuplicatePreventionIndexes(); err != nil {
+		log.Printf("Warning: Failed to apply duplicate prevention indexes: %v", err)
+		// Don't fail the migration if indexes fail - they're performance optimizations
+	}
+
+	return nil
+}
+
+// ApplyDuplicatePreventionIndexes creates database indexes for optimal duplicate detection performance
+func ApplyDuplicatePreventionIndexes() error {
+	if DB == nil {
+		return fmt.Errorf("database connection not established")
+	}
+
+	log.Println("Applying duplicate prevention performance indexes...")
+
+	// Index for geospatial queries (latitude, longitude)
+	if err := DB.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_spots_location
+		ON spots (latitude, longitude)
+		WHERE deleted_at IS NULL
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create location index: %w", err)
+	}
+
+	// Index for name-based searches combined with status filtering
+	if err := DB.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_spots_name_status
+		ON spots (name, status)
+		WHERE deleted_at IS NULL
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create name-status index: %w", err)
+	}
+
+	// Index for status and source filtering
+	if err := DB.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_spots_status_source
+		ON spots (status, source)
+		WHERE deleted_at IS NULL
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create status-source index: %w", err)
+	}
+
+	// Partial index for active spots (non-deleted)
+	if err := DB.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_spots_active
+		ON spots (id, created_at)
+		WHERE deleted_at IS NULL
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create active spots index: %w", err)
+	}
+
+	// Index for last_seen timestamp queries
+	if err := DB.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_spots_last_seen
+		ON spots (last_seen DESC)
+		WHERE deleted_at IS NULL AND last_seen IS NOT NULL
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create last_seen index: %w", err)
+	}
+
+	// Composite index for user-specific queries
+	if err := DB.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_spots_user_source
+		ON spots (user_id, source)
+		WHERE deleted_at IS NULL AND user_id IS NOT NULL
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create user-source index: %w", err)
+	}
+
+	log.Println("Duplicate prevention indexes applied successfully")
 	return nil
 }
 

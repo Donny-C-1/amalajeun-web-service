@@ -76,29 +76,72 @@ func (s *PlacesService) RunPlacesDiscovery() error {
 }
 
 // processDiscoveredPlace handles an individual discovered place from Google Places API
+// Now includes enhanced duplicate prevention logic that goes beyond just PlaceID checking
 func (s *PlacesService) processDiscoveredPlace(googlePlace GooglePlace) error {
-	// Check if place already exists in database
+	// First check if place already exists by PlaceID (existing logic)
 	existingSpot, err := s.spotRepo.FindByPlaceID(googlePlace.PlaceID)
 	if err != nil {
 		return err
 	}
 
 	if existingSpot != nil {
-		// Place exists, update last_seen timestamp
-		log.Printf("Updating last_seen for existing spot: %s (%s)", existingSpot.Name, existingSpot.PlaceID)
+		// Place exists by PlaceID, update last_seen timestamp
+		log.Printf("PLACES_UPDATE: Updating last_seen for existing spot: %s (PlaceID: %s, ID: %d)",
+			existingSpot.Name, existingSpot.PlaceID, existingSpot.ID)
 		return s.spotRepo.UpdateLastSeen(existingSpot)
 	}
 
-	// Place doesn't exist, create new spot in verification queue
-	log.Printf("Creating new spot in verification queue: %s (%s)", googlePlace.Name, googlePlace.PlaceID)
+	// Place doesn't exist by PlaceID, but check for duplicates using name + location
+	// This catches cases where the same physical location has different PlaceIDs
+	log.Printf("PLACES_DISCOVERY: Processing new place: %s (%s)", googlePlace.Name, googlePlace.PlaceID)
 
-	_, err = s.spotRepo.CreateFromGooglePlace(googlePlace)
+	// CreateFromGooglePlace now includes duplicate checking internally
+	newSpot, err := s.spotRepo.CreateFromGooglePlace(googlePlace)
 	if err != nil {
+		// Check if this is a duplicate error
+		if isDuplicateError(err) {
+			log.Printf("PLACES_DUPLICATE: Skipping duplicate place from Google Places: %s (%s) - %v",
+				googlePlace.Name, googlePlace.PlaceID, err)
+			// Return nil to continue processing other places - this is not a fatal error
+			return nil
+		}
+		// Other errors should be returned
 		return err
 	}
 
-	log.Printf("Successfully added new spot to verification queue: %s", googlePlace.Name)
+	log.Printf("PLACES_SUCCESS: Successfully added new spot to verification queue: %s (ID: %d)",
+		newSpot.Name, newSpot.ID)
 	return nil
+}
+
+// isDuplicateError checks if an error is related to duplicate detection
+func isDuplicateError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// Check if error message contains duplicate-related keywords
+	errMsg := err.Error()
+	return contains(errMsg, "duplicate spot detected") ||
+		contains(errMsg, "similar spot exists") ||
+		contains(errMsg, "matches existing spot")
+}
+
+// contains is a helper function to check if a string contains a substring
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr ||
+		(len(s) > len(substr) &&
+			(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
+				indexOfSubstring(s, substr) >= 0)))
+}
+
+// indexOfSubstring finds the index of a substring in a string
+func indexOfSubstring(s, substr string) int {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
 }
 
 // GetPendingVerificationSpots returns all spots pending verification
